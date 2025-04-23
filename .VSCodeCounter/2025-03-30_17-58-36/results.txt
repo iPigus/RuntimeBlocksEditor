@@ -1,0 +1,171 @@
+Date : 2025-03-30 17:58:36
+Directory : /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor
+Total : 120 files,  58203 codes, 1363 comments, 2595 blanks, all 62161 lines
+
+Languages
++-------------+------------+------------+------------+------------+------------+
+| language    | files      | code       | comment    | blank      | total      |
++-------------+------------+------------+------------+------------+------------+
+| XML         |         45 |     48,942 |         45 |         45 |     49,032 |
+| C#          |         47 |      5,566 |      1,215 |      1,708 |      8,489 |
+| UnityShader |         19 |      2,775 |        103 |        745 |      3,623 |
+| JSON        |          3 |        621 |          0 |          4 |        625 |
+| Markdown    |          5 |        238 |          0 |         92 |        330 |
+| Properties  |          1 |         61 |          0 |          1 |         62 |
++-------------+------------+------------+------------+------------+------------+
+
+Directories
++------------------------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                                                                                         | files      | code       | comment    | blank      | total      |
++------------------------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                                                                                            |        120 |     58,203 |      1,363 |      2,595 |     62,161 |
+| . (Files)                                                                                                                    |         48 |     49,057 |         45 |         72 |     49,174 |
+| Assets                                                                                                                       |         70 |      8,680 |      1,318 |      2,521 |     12,519 |
+| Assets/RuntimeBlocksEditor                                                                                                   |         18 |      3,178 |        474 |        682 |      4,334 |
+| Assets/RuntimeBlocksEditor (Files)                                                                                           |          1 |         92 |          0 |         28 |        120 |
+| Assets/RuntimeBlocksEditor/Documentation                                                                                     |          1 |         61 |          0 |         25 |         86 |
+| Assets/RuntimeBlocksEditor/Examples                                                                                          |          1 |         31 |          0 |         13 |         44 |
+| Assets/RuntimeBlocksEditor/Scripts                                                                                           |         11 |      2,348 |        452 |        465 |      3,265 |
+| Assets/RuntimeBlocksEditor/Scripts/Core                                                                                      |          3 |        188 |         48 |         39 |        275 |
+| Assets/RuntimeBlocksEditor/Scripts/Demo                                                                                      |          1 |         68 |         15 |         16 |         99 |
+| Assets/RuntimeBlocksEditor/Scripts/Gizmo                                                                                     |          7 |      2,092 |        389 |        410 |      2,891 |
+| Assets/RuntimeBlocksEditor/Shaders                                                                                           |          2 |        437 |         21 |        101 |        559 |
+| Assets/RuntimeBlocksEditor/Shaders/Core                                                                                      |          2 |        437 |         21 |        101 |        559 |
+| Assets/RuntimeBlocksEditor/TutorialInfo                                                                                      |          2 |        209 |          1 |         50 |        260 |
+| Assets/RuntimeBlocksEditor/TutorialInfo/Scripts                                                                              |          2 |        209 |          1 |         50 |        260 |
+| Assets/RuntimeBlocksEditor/TutorialInfo/Scripts (Files)                                                                      |          1 |         14 |          0 |          3 |         17 |
+| Assets/RuntimeBlocksEditor/TutorialInfo/Scripts/Editor                                                                       |          1 |        195 |          1 |         47 |        243 |
+| Assets/TextMesh Pro                                                                                                          |         52 |      5,502 |        844 |      1,839 |      8,185 |
+| Assets/TextMesh Pro/Examples & Extras                                                                                        |         34 |      3,009 |        762 |      1,193 |      4,964 |
+| Assets/TextMesh Pro/Examples & Extras/Scripts                                                                                |         34 |      3,009 |        762 |      1,193 |      4,964 |
+| Assets/TextMesh Pro/Shaders                                                                                                  |         17 |      2,338 |         82 |        644 |      3,064 |
+| Assets/TextMesh Pro/Sprites                                                                                                  |          1 |        155 |          0 |          2 |        157 |
+| Packages                                                                                                                     |          2 |        466 |          0 |          2 |        468 |
++------------------------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++------------------------------------------------------------------------------------------------------------------------------+-------------+------------+------------+------------+------------+
+| filename                                                                                                                     | language    | code       | comment    | blank      | total      |
++------------------------------------------------------------------------------------------------------------------------------+-------------+------------+------------+------------+------------+
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assembly-CSharp-Editor.csproj                                             | XML         |      1,118 |          1 |          1 |      1,120 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assembly-CSharp.csproj                                                    | XML         |      1,021 |          1 |          1 |      1,023 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/RuntimeBlocksEditor/Documentation/UserGuide.md                     | Markdown    |         61 |          0 |         25 |         86 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/RuntimeBlocksEditor/Examples/README.md                             | Markdown    |         31 |          0 |         13 |         44 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/RuntimeBlocksEditor/README.md                                      | Markdown    |         92 |          0 |         28 |        120 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/RuntimeBlocksEditor/Scripts/Core/IBlockEditor.cs                   | C#          |         13 |         31 |          6 |         50 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/RuntimeBlocksEditor/Scripts/Core/TriplanarMaterialManager.cs       | C#          |        122 |         11 |         23 |        156 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/RuntimeBlocksEditor/Scripts/Core/TriplanarMaterialManagerEditor.cs | C#          |         53 |          6 |         10 |         69 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/RuntimeBlocksEditor/Scripts/Demo/DemoSceneCameraMovement.cs        | C#          |         68 |         15 |         16 |         99 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/RuntimeBlocksEditor/Scripts/Gizmo/BlockToEdit.cs                   | C#          |        102 |         26 |         18 |        146 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/RuntimeBlocksEditor/Scripts/Gizmo/GizmoController.cs               | C#          |        125 |         11 |         26 |        162 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/RuntimeBlocksEditor/Scripts/Gizmo/GizmoEvents.cs                   | C#          |        184 |         60 |         67 |        311 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/RuntimeBlocksEditor/Scripts/Gizmo/GizmoHistory.cs                  | C#          |        184 |         43 |         25 |        252 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/RuntimeBlocksEditor/Scripts/Gizmo/GizmoTools.cs                    | C#          |      1,227 |        213 |        220 |      1,660 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/RuntimeBlocksEditor/Scripts/Gizmo/GizmoUI.cs                       | C#          |        150 |          7 |         28 |        185 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/RuntimeBlocksEditor/Scripts/Gizmo/GizmoVisuals.cs                  | C#          |        120 |         29 |         26 |        175 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/RuntimeBlocksEditor/Shaders/Core/OverlayColor.shader               | UnityShader |         56 |          0 |         10 |         66 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/RuntimeBlocksEditor/Shaders/Core/TriplanarBlock.shader             | UnityShader |        381 |         21 |         91 |        493 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/RuntimeBlocksEditor/TutorialInfo/Scripts/Editor/ReadmeEditor.cs    | C#          |        195 |          1 |         47 |        243 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/RuntimeBlocksEditor/TutorialInfo/Scripts/Readme.cs                 | C#          |         14 |          0 |          3 |         17 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Examples & Extras/Scripts/Benchmark01.cs              | C#          |         63 |         29 |         37 |        129 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Examples & Extras/Scripts/Benchmark01_UGUI.cs         | C#          |         59 |         37 |         40 |        136 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Examples & Extras/Scripts/Benchmark02.cs              | C#          |         65 |          6 |         27 |         98 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Examples & Extras/Scripts/Benchmark03.cs              | C#          |         73 |          1 |         19 |         93 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Examples & Extras/Scripts/Benchmark04.cs              | C#          |         41 |         26 |         19 |         86 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Examples & Extras/Scripts/CameraController.cs         | C#          |        198 |         25 |         69 |        292 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Examples & Extras/Scripts/ChatController.cs           | C#          |         31 |          5 |         16 |         52 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Examples & Extras/Scripts/DropdownSample.cs           | C#          |         15 |          0 |          5 |         20 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Examples & Extras/Scripts/EnvMapAnimator.cs           | C#          |         23 |          4 |          9 |         36 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Examples & Extras/Scripts/ObjectSpin.cs               | C#          |         50 |          4 |         15 |         69 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Examples & Extras/Scripts/ShaderPropAnimator.cs       | C#          |         33 |          5 |         14 |         52 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Examples & Extras/Scripts/SimpleScript.cs             | C#          |         24 |         15 |         20 |         59 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Examples & Extras/Scripts/SkewTextExample.cs          | C#          |         95 |         18 |         46 |        159 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Examples & Extras/Scripts/TMP_DigitValidator.cs       | C#          |         19 |          5 |          4 |         28 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Examples & Extras/Scripts/TMP_ExampleScript_01.cs     | C#          |         37 |          9 |         19 |         65 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Examples & Extras/Scripts/TMP_FrameRateCounter.cs     | C#          |         91 |         11 |         33 |        135 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Examples & Extras/Scripts/TMP_PhoneNumberValidator.cs | C#          |         93 |          7 |          6 |        106 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Examples & Extras/Scripts/TMP_TextEventCheck.cs       | C#          |         56 |          1 |         17 |         74 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Examples & Extras/Scripts/TMP_TextEventHandler.cs     | C#          |        170 |         31 |         54 |        255 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Examples & Extras/Scripts/TMP_TextInfoDebugTool.cs    | C#          |        409 |         97 |        147 |        653 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Examples & Extras/Scripts/TMP_TextSelector_A.cs       | C#          |        100 |         17 |         41 |        158 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Examples & Extras/Scripts/TMP_TextSelector_B.cs       | C#          |        250 |        191 |        107 |        548 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Examples & Extras/Scripts/TMP_UiFrameRateCounter.cs   | C#          |         96 |          1 |         28 |        125 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Examples & Extras/Scripts/TMPro_InstructionOverlay.cs | C#          |         55 |          6 |         24 |         85 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Examples & Extras/Scripts/TeleType.cs                 | C#          |         40 |         15 |         28 |         83 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Examples & Extras/Scripts/TextConsoleSimulator.cs     | C#          |         79 |         13 |         29 |        121 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Examples & Extras/Scripts/TextMeshProFloatingText.cs  | C#          |        135 |         32 |         57 |        224 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Examples & Extras/Scripts/TextMeshSpawner.cs          | C#          |         46 |         13 |         21 |         80 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Examples & Extras/Scripts/VertexColorCycler.cs        | C#          |         48 |         13 |         24 |         85 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Examples & Extras/Scripts/VertexJitter.cs             | C#          |        105 |         26 |         44 |        175 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Examples & Extras/Scripts/VertexShakeA.cs             | C#          |         99 |         23 |         39 |        161 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Examples & Extras/Scripts/VertexShakeB.cs             | C#          |        112 |         29 |         44 |        185 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Examples & Extras/Scripts/VertexZoom.cs               | C#          |        112 |         32 |         48 |        192 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Examples & Extras/Scripts/WarpTextExample.cs          | C#          |         87 |         15 |         43 |        145 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Shaders/TMP_Bitmap-Custom-Atlas.shader                | UnityShader |        109 |          2 |         33 |        144 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Shaders/TMP_Bitmap-Mobile.shader                      | UnityShader |        112 |          3 |         31 |        146 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Shaders/TMP_Bitmap.shader                             | UnityShader |        109 |          2 |         33 |        144 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Shaders/TMP_SDF Overlay.shader                        | UnityShader |        243 |          4 |         71 |        318 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Shaders/TMP_SDF SSD.shader                            | UnityShader |        241 |          4 |         66 |        311 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Shaders/TMP_SDF-Mobile Masking.shader                 | UnityShader |        188 |         10 |         50 |        248 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Shaders/TMP_SDF-Mobile Overlay.shader                 | UnityShader |        183 |          8 |         50 |        241 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Shaders/TMP_SDF-Mobile SSD.shader                     | UnityShader |         82 |          4 |         21 |        107 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Shaders/TMP_SDF-Mobile.shader                         | UnityShader |        183 |          8 |         50 |        241 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Shaders/TMP_SDF-Surface-Mobile.shader                 | UnityShader |        103 |          8 |         28 |        139 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Shaders/TMP_SDF-Surface.shader                        | UnityShader |        122 |          4 |         33 |        159 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Shaders/TMP_SDF.shader                                | UnityShader |        243 |          4 |         71 |        318 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Shaders/TMP_Sprite.shader                             | UnityShader |         97 |          0 |         20 |        117 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Shaders/TMPro.cginc                                   | UnityShader |         63 |          2 |         20 |         85 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Shaders/TMPro_Mobile.cginc                            | UnityShader |        122 |          2 |         34 |        158 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Shaders/TMPro_Properties.cginc                        | UnityShader |         62 |         10 |         14 |         86 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Shaders/TMPro_Surface.cginc                           | UnityShader |         76 |          7 |         19 |        102 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Assets/TextMesh Pro/Sprites/EmojiOne.json                                 | JSON        |        155 |          0 |          2 |        157 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/LICENSE.md                                                                | Markdown    |         26 |          0 |         11 |         37 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/PPv2URPConverters.csproj                                                  | XML         |        993 |          1 |          1 |        995 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Packages/manifest.json                                                    | JSON        |         47 |          0 |          1 |         48 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Packages/packages-lock.json                                               | JSON        |        419 |          0 |          1 |        420 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/README.md                                                                 | Markdown    |         28 |          0 |         15 |         43 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Unity.Burst.CodeGen.csproj                                                | XML         |        973 |          1 |          1 |        975 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Unity.Burst.Editor.csproj                                                 | XML         |        997 |          1 |          1 |        999 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Unity.Burst.csproj                                                        | XML         |        981 |          1 |          1 |        983 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Unity.CollabProxy.Editor.csproj                                           | XML         |        979 |          1 |          1 |        981 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Unity.Cursor.Editor.csproj                                                | XML         |        990 |          1 |          1 |        992 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Unity.InputSystem.ForUI.csproj                                            | XML         |        958 |          1 |          1 |        960 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Unity.InputSystem.TestFramework.csproj                                    | XML         |        922 |          1 |          1 |        924 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Unity.InputSystem.csproj                                                  | XML         |      1,336 |          1 |          1 |      1,338 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Unity.Mathematics.Editor.csproj                                           | XML         |        982 |          1 |          1 |        984 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Unity.Mathematics.csproj                                                  | XML         |      1,044 |          1 |          1 |      1,046 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Unity.PlasticSCM.Editor.csproj                                            | XML         |      1,310 |          1 |          1 |      1,312 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Unity.RenderPipeline.Universal.ShaderLibrary.csproj                       | XML         |      1,005 |          1 |          1 |      1,007 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Unity.RenderPipelines.Core.Editor.csproj                                  | XML         |      1,145 |          1 |          1 |      1,147 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Unity.RenderPipelines.Core.Runtime.csproj                                 | XML         |      1,150 |          1 |          1 |      1,152 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Unity.RenderPipelines.Core.ShaderLibrary.csproj                           | XML         |      1,018 |          1 |          1 |      1,020 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Unity.RenderPipelines.ShaderGraph.ShaderGraphLibrary.csproj               | XML         |        967 |          1 |          1 |        969 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Unity.RenderPipelines.Universal.Config.Runtime.csproj                     | XML         |        958 |          1 |          1 |        960 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Unity.RenderPipelines.Universal.Editor.csproj                             | XML         |      1,274 |          1 |          1 |      1,276 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Unity.RenderPipelines.Universal.Runtime.csproj                            | XML         |      1,138 |          1 |          1 |      1,140 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Unity.RenderPipelines.Universal.Shaders.csproj                            | XML         |      1,089 |          1 |          1 |      1,091 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Unity.Rider.Editor.csproj                                                 | XML         |        990 |          1 |          1 |        992 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Unity.Searcher.Editor.csproj                                              | XML         |        990 |          1 |          1 |        992 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Unity.ShaderGraph.Editor.csproj                                           | XML         |      1,777 |          1 |          1 |      1,779 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Unity.ShaderGraph.Utilities.csproj                                        | XML         |        981 |          1 |          1 |        983 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Unity.TextMeshPro.Editor.csproj                                           | XML         |      1,026 |          1 |          1 |      1,028 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Unity.TextMeshPro.csproj                                                  | XML         |      1,014 |          1 |          1 |      1,016 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Unity.Timeline.Editor.csproj                                              | XML         |      1,255 |          1 |          1 |      1,257 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Unity.Timeline.csproj                                                     | XML         |      1,028 |          1 |          1 |      1,030 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Unity.VSCode.Editor.csproj                                                | XML         |        985 |          1 |          1 |        987 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Unity.VisualScripting.Core.Editor.csproj                                  | XML         |      1,454 |          1 |          1 |      1,456 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Unity.VisualScripting.Core.csproj                                         | XML         |      1,385 |          1 |          1 |      1,387 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Unity.VisualScripting.Flow.Editor.csproj                                  | XML         |      1,150 |          1 |          1 |      1,152 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Unity.VisualScripting.Flow.csproj                                         | XML         |      1,360 |          1 |          1 |      1,362 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Unity.VisualScripting.SettingsProvider.Editor.csproj                      | XML         |        992 |          1 |          1 |        994 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Unity.VisualScripting.Shared.Editor.csproj                                | XML         |        984 |          1 |          1 |        986 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Unity.VisualScripting.State.Editor.csproj                                 | XML         |      1,050 |          1 |          1 |      1,052 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Unity.VisualScripting.State.csproj                                        | XML         |        988 |          1 |          1 |        990 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/Unity.VisualStudio.Editor.csproj                                          | XML         |        991 |          1 |          1 |        993 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/UnityEditor.TestRunner.csproj                                             | XML         |      1,105 |          1 |          1 |      1,107 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/UnityEditor.UI.csproj                                                     | XML         |      1,013 |          1 |          1 |      1,015 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/UnityEngine.TestRunner.csproj                                             | XML         |      1,036 |          1 |          1 |      1,038 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/UnityEngine.UI.csproj                                                     | XML         |      1,040 |          1 |          1 |      1,042 |
+| /Users/jan/RuntimeBlocksEditor/RuntimeBlocksEditor/ignore.conf                                                               | Properties  |         61 |          0 |          1 |         62 |
+| Total                                                                                                                        |             |     58,203 |      1,363 |      2,595 |     62,161 |
++------------------------------------------------------------------------------------------------------------------------------+-------------+------------+------------+------------+------------+

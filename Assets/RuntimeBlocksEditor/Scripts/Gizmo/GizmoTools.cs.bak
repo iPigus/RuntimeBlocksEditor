@@ -1,0 +1,2223 @@
+using UnityEngine;
+using System.Collections.Generic;
+using System.Linq;
+using UnityEngine.InputSystem; 
+
+namespace RuntimeBlocksEditor.Gizmo
+{
+    /// <summary>
+    /// Implementation of Gizmo tools (move, rotate, select, delete).
+    /// </summary>
+    public class GizmoTools : MonoBehaviour
+    {
+        [SerializeField] private LayerMask maskSel;
+        [SerializeField] private float gridSnapb = 1f;
+
+        public GameObject selected;
+        public GameObject[] controlObjects;
+        private Vector3[] objectOffsets;
+        private Vector3 thisOffset = Vector3.zero;
+        private Vector2 mousePrevPos;
+        private float accumulatedMovementX = 0f; // Track accumulated mouse movement for grid stepping
+        private float accumulatedMovementY = 0f;
+        private Vector3[] originalScales; // Store original scales when starting a scale operation
+        private Vector3 initialHitPoint; // Store initial hit point for scaling
+        private bool scaleInitialized = false; // Flag to track if scaling has been initialized
+        
+        private GizmoController controller;
+        private GizmoHistory history;
+        private GizmoVisuals visuals;
+        private Vector3 prevGizmoPosition;
+        public static GizmoTools Singleton;
+        
+        // Reference to the MultipleSelectionTool
+        private MultipleSelectionTool selectionTool;
+        
+        private void Awake()
+        {
+            Singleton = this;
+            
+            controller = GetComponent<GizmoController>();
+            history = GetComponent<GizmoHistory>();
+            visuals = GetComponent<GizmoVisuals>();
+            selectionTool = GetComponent<MultipleSelectionTool>();
+            
+            // Debug informations
+            Debug.Log("GizmoTools.Awake - maskSel: " + maskSel.value);
+            
+            if (visuals != null)
+            {
+                Debug.Log("GizmoVisuals found: " + (visuals != null));
+                Debug.Log("xArrow: " + (visuals.xArrow != null ? visuals.xArrow.name : "null"));
+                Debug.Log("yArrow: " + (visuals.yArrow != null ? visuals.yArrow.name : "null"));
+                Debug.Log("zArrow: " + (visuals.zArrow != null ? visuals.zArrow.name : "null"));
+                Debug.Log("xRot: " + (visuals.xRot != null ? visuals.xRot.name : "null"));
+                Debug.Log("yRot: " + (visuals.yRot != null ? visuals.yRot.name : "null"));
+                Debug.Log("zRot: " + (visuals.zRot != null ? visuals.zRot.name : "null"));
+            }
+            else
+            {
+                Debug.LogError("GizmoVisuals is null!");
+            }
+        }
+        
+        private void Start()
+        {
+            // Disable preview highlighting by default
+            if (selectionTool != null)
+            {
+                selectionTool.SetPreviewHighlightingEnabled(false);
+            }
+            
+            // Initialize arrows and rotation handles
+            UpdateActiveTool(0);
+        }
+        
+        /// <summary>
+        /// Updates the list of selected objects.
+        /// </summary>
+        public void UpdateSelectedObjects()
+        {
+            Debug.Log("UpdateSelectedObjects called");
+            
+            Vector3 newPos = Vector3.zero;
+            GameObject[] tags = GameObject.FindGameObjectsWithTag(controller.tagToFind);
+            Debug.Log("Found " + tags.Length + " objects with tag: " + controller.tagToFind + " (tag is '" + controller.tagToFind + "')");
+            
+            int tagsCount = 0;
+            GameObject[] tagsObj = new GameObject[tags.Length];
+            
+            // DEBUG: Print all found objects with their selection state
+            Debug.Log("--- All objects with tag ---");
+            foreach (GameObject obj in tags)
+            {
+                BlockToEdit blockToEdit = obj.GetComponent<BlockToEdit>();
+                Debug.Log($"Object: {obj.name}, Has BlockToEdit: {blockToEdit != null}, Selected: {blockToEdit != null && blockToEdit.selected}");
+            }
+            Debug.Log("-------------------------");
+            
+            foreach (GameObject theobj in tags)
+            {
+                BlockToEdit blockToEdit = theobj.GetComponent<BlockToEdit>();
+                if (blockToEdit != null && blockToEdit.selected)
+                {
+                    tagsObj[tagsCount] = theobj;
+                    tagsCount += 1;
+                    Debug.Log("Selected object: " + theobj.name);
+                }
+            }
+            
+            Debug.Log("Total selected objects: " + tagsCount);
+            
+            if (tagsCount != 0)
+            {
+                controlObjects = new GameObject[tagsCount];
+                for (int i = 0; i < controlObjects.Length; i++)
+                {
+                    controlObjects[i] = tagsObj[i];
+                    if (i == 0)
+                    {
+                        newPos = controlObjects[i].transform.position;
+                    }
+                    else
+                    {
+                        newPos += controlObjects[i].transform.position;
+                    }
+                }
+                
+                // Calculate the center of selection without snapping
+                newPos = newPos / controlObjects.Length;
+                
+                // Set Gizmo position to the center of selection
+                transform.position = newPos;
+                objectOffsets = new Vector3[controlObjects.Length];
+                for (int i = 0; i < controlObjects.Length; i++)
+                {
+                    objectOffsets[i] = transform.position - controlObjects[i].transform.position;
+                }
+                
+                Debug.Log("controlObjects array has " + controlObjects.Length + " objects");
+            }
+            else
+            {
+                controlObjects = null;
+                Debug.Log("No objects selected, controlObjects set to null");
+            }
+        }
+        
+        /// <summary>
+        /// Updates the position of the Gizmo and applies snapping.
+        /// </summary>
+        public void UpdateGizmoPositionWithSnapping()
+        {
+            if (controlObjects == null || controlObjects.Length == 0)
+                return;
+            
+            Vector3 newPos = Vector3.zero;
+            for (int i = 0; i < controlObjects.Length; i++)
+            {
+                if (controlObjects[i] != null)
+                {
+                    if (i == 0)
+                    {
+                        newPos = controlObjects[i].transform.position;
+                    }
+                    else
+                    {
+                        newPos += controlObjects[i].transform.position;
+                    }
+                }
+            }
+            
+            // Calculate the center of selection and apply snapping
+            newPos = newPos / controlObjects.Length;
+            
+            // Snap to grid
+            float snapValue = controller.gridSnap > 0 ? controller.gridSnap : gridSnapb;
+            newPos.x = Mathf.Round(newPos.x / snapValue) * snapValue;
+            newPos.y = Mathf.Round(newPos.y / snapValue) * snapValue;
+            newPos.z = Mathf.Round(newPos.z / snapValue) * snapValue;
+            
+            // Set Gizmo position
+            transform.position = newPos;
+            
+            // Update offsets
+            for (int i = 0; i < controlObjects.Length; i++)
+            {
+                if (controlObjects[i] != null)
+                {
+                    objectOffsets[i] = transform.position - controlObjects[i].transform.position;
+                }
+            }
+        }
+        
+        /// <summary>
+        /// Applies position snapping to all selected objects.
+        /// </summary>
+        private void ApplyPositionSnapping()
+        {
+            if (controlObjects == null || controlObjects.Length == 0 || !controller.snap)
+                return;
+                
+            float snapValue = controller.gridSnap > 0 ? controller.gridSnap : gridSnapb;
+            
+            // Apply snapping to each object
+            foreach (GameObject obj in controlObjects)
+            {
+                if (obj == null) continue;
+                
+                // Store original position
+                Vector3 originalPos = obj.transform.position;
+                
+                // Calculate fully snapped position
+                Vector3 snappedPos = originalPos;
+                snappedPos.x = Mathf.Round(snappedPos.x / snapValue) * snapValue;
+                snappedPos.y = Mathf.Round(snappedPos.y / snapValue) * snapValue;
+                snappedPos.z = Mathf.Round(snappedPos.z / snapValue) * snapValue;
+                
+                // Calculate difference between original and snapped
+                Vector3 posDiff = snappedPos - originalPos;
+                
+                // Move object by half the snapping distance
+                Vector3 halfSnappedPos = originalPos + (posDiff * 0.5f);
+                
+                // Apply the half-snapped position
+                obj.transform.position = halfSnappedPos;
+            }
+            
+            // Update gizmo position to reflect snapped positions
+            UpdateSelectedObjects();
+        }
+        
+        /// <summary>
+        /// Updates the positions of scale handles based on object size.
+        /// </summary>
+        private void UpdateScaleHandlePositions(GameObject obj)
+        {
+            if (obj == null || visuals == null ||
+                visuals.xScalePos == null || visuals.xScaleNeg == null ||
+                visuals.yScalePos == null || visuals.yScaleNeg == null ||
+                visuals.zScalePos == null || visuals.zScaleNeg == null)
+                return;
+                
+            // Get object size
+            Vector3 size = Vector3.one;
+            Renderer renderer = obj.GetComponent<Renderer>();
+            if (renderer != null && renderer.bounds.size != Vector3.zero)
+            {
+                size = renderer.bounds.size;
+            }
+            else
+            {
+                size = Vector3.Scale(obj.transform.localScale, Vector3.one);
+            }
+            
+            // Calculate offset for each handle - exactly 0.5 units from object boundaries
+            float offsetX = size.x / 2.0f + 0.5f;
+            float offsetY = size.y / 2.0f + 0.5f;
+            float offsetZ = size.z / 2.0f + 0.5f;
+            
+            // Update positions for each handle in local space
+            visuals.xScalePos.transform.localPosition = new Vector3(offsetX, 0, 0);
+            visuals.xScaleNeg.transform.localPosition = new Vector3(-offsetX, 0, 0);
+            visuals.yScalePos.transform.localPosition = new Vector3(0, offsetY, 0);
+            visuals.yScaleNeg.transform.localPosition = new Vector3(0, -offsetY, 0);
+            visuals.zScalePos.transform.localPosition = new Vector3(0, 0, offsetZ);
+            visuals.zScaleNeg.transform.localPosition = new Vector3(0, 0, -offsetZ);
+        }
+        
+        /// <summary>
+        /// Updates the active tool.
+        /// </summary>
+        public void UpdateActiveTool(int toolType)
+        {
+            // Do nothing if no camera is available
+            if (!Camera.main) return;
+            
+            // Handle the active tool
+            switch (toolType)
+            {
+                case 0:
+                    HandleMoveTool();
+                    break;
+                case 1:
+                    HandleRotateTool();
+                    break;
+                case 2:
+                    HandleScaleTool();
+                    break;
+                case 3:
+                    HandleSelectTool();
+                    break;
+                case 5:
+                    HandleDeleteTool();
+                    break;
+            }
+            
+            // Handle hover highlighting for all tools except delete
+            if (toolType != 5) // Don't show hover effects for delete tool
+            {
+                HandleHoverHighlighting();
+            }
+        }
+        
+        #region Tool Implementations
+        
+        private void HandleMoveTool()
+        {
+            // Reset offset on new click
+            if (Input.GetMouseButtonDown(0))
+            {
+                thisOffset = Vector3.zero;
+                
+                // Trigger move start event when starting to move objects
+                if (selected != null && controlObjects != null && GizmoEvents.Instance != null)
+                {
+                    Vector3[] startPositions = new Vector3[controlObjects.Length];
+                    for (int i = 0; i < controlObjects.Length; i++)
+                    {
+                        if (controlObjects[i] != null)
+                        {
+                            startPositions[i] = controlObjects[i].transform.position;
+                        }
+                    }
+                    
+                    GizmoEvents.Instance.TriggerMoveStart(controlObjects, startPositions);
+                }
+            }
+
+            if (controlObjects == null)
+            {
+                visuals.SetGizmoVisibility(false, false, false);
+                // Even if no blocks are selected, we still allow them to be selected
+            }
+            else
+            {
+                visuals.SetGizmoVisibility(true, false, false);
+                
+                if (controller.localControl)
+                    transform.rotation = controlObjects[0].transform.rotation;
+                else
+                    transform.rotation = Quaternion.identity;
+                    
+                if (Input.GetMouseButtonDown(0) && selected != null)
+                    history.SaveState(controlObjects);
+            }
+            
+            if (Input.GetMouseButton(0) && selected != null)
+            {
+                // Store initial positions if this is the first move
+                if (controlObjects != null && GizmoEvents.Instance != null)
+                {
+                    Vector3[] startPositions = new Vector3[controlObjects.Length];
+                    Vector3[] currentPositions = new Vector3[controlObjects.Length];
+                    
+                    for (int i = 0; i < controlObjects.Length; i++)
+                    {
+                        if (controlObjects[i] != null)
+                        {
+                            // We use the saved position from history as the start position
+                            // and the current position as the current position
+                            startPositions[i] = transform.position - objectOffsets[i];
+                            currentPositions[i] = controlObjects[i].transform.position;
+                        }
+                    }
+                    
+                    // Trigger the moving event
+                    GizmoEvents.Instance.TriggerMoving(controlObjects, startPositions, currentPositions);
+                }
+                
+                HandleMoveControl();
+            }
+            else if (Input.GetMouseButtonUp(0) && selected != null && controlObjects != null)
+            {
+                // Trigger move end event when finishing movement
+                if (GizmoEvents.Instance != null)
+                {
+                    Vector3[] startPositions = new Vector3[controlObjects.Length];
+                    Vector3[] endPositions = new Vector3[controlObjects.Length];
+                    
+                    for (int i = 0; i < controlObjects.Length; i++)
+                    {
+                        if (controlObjects[i] != null)
+                        {
+                            // Use the saved positions from history and current positions
+                            startPositions[i] = history.GetLastState(controlObjects[i]).position;
+                            endPositions[i] = controlObjects[i].transform.position;
+                        }
+                    }
+                    
+                    GizmoEvents.Instance.TriggerMoveEnd(controlObjects, startPositions, endPositions);
+                }
+            }
+            else
+            {
+                // Handle selection of move controls
+                RaycastHit hitIs;
+                bool hitGizmoElement = false;
+                bool hitAnyObject = false;
+                
+                if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out hitIs, Mathf.Infinity, maskSel))
+                {
+                    hitAnyObject = true;
+                    GameObject hitObject = hitIs.transform.gameObject;
+                    
+                    if (visuals.IsMoveElement(hitObject))
+                    {
+                        // Hit a Gizmo element
+                        hitGizmoElement = true;
+                        
+                        if (selected == null)
+                            visuals.HighlightGizmoElement(hitObject);
+                        else if (hitObject != selected)
+                        {
+                            visuals.RevertHighlight();
+                            visuals.HighlightGizmoElement(hitObject);
+                        }
+                        
+                        selected = hitObject;
+                    }
+                    else if (selected != null)
+                    {
+                        visuals.RevertHighlight();
+                        selected = null;
+                    }
+                }
+                else if (selected != null)
+                {
+                    visuals.RevertHighlight();
+                    selected = null;
+                }
+                
+                // If Gizmo element was not hit, try to select a block
+                if (!hitGizmoElement && Input.GetMouseButtonDown(0))
+                {
+                    // Try to select a block
+                    Ray rayS = Camera.main.ScreenPointToRay(Input.mousePosition);
+                    bool hitBlock = false;
+                    
+                    if (Physics.Raycast(rayS, out RaycastHit hitBlockInfo))
+                    {
+                        if (hitBlockInfo.transform.CompareTag(controller.tagToFind))
+                        {
+                            hitBlock = true;
+                            BlockToEdit blockToEdit = hitBlockInfo.transform.GetComponent<BlockToEdit>();
+                            if (blockToEdit != null)
+                            {
+                                // Check if this is part of a group - if it is, we'll select the group instead
+                                bool selectedParent = blockToEdit.SelectGroupParentIfPartOfGroup();
+                                if (selectedParent)
+                                {
+                                    // Already handled by SelectGroupParentIfPartOfGroup
+                                    UpdateSelectedObjects();
+                                    return;
+                                }
+                                
+                                // If not part of a group, proceed with normal selection
+                                
+                                // Sprawdź czy lewy Shift jest wciśnięty - jeśli nie, odznacz inne obiekty
+                                if (!Input.GetKey(controller.selectMultipleCode))
+                                {
+                                    // Deselect all blocks except the one being clicked
+                                    foreach (var obj in BlockToEdit.AllObjects)
+                                    {
+                                        if (obj != null && obj != blockToEdit)
+                                        {
+                                            bool wasSelected = obj.selected;
+                                            obj.selected = false;
+                                            obj.DisableOutline();
+                                            obj.DisableHoverOutline();
+                                            
+                                            // Trigger deselect event
+                                            if (wasSelected && GizmoEvents.Instance != null)
+                                            {
+                                                GizmoEvents.Instance.TriggerObjectDeselected(obj.gameObject);
+                                            }
+                                        }
+                                    }
+                                }
+                                
+                                // Toggle selection
+                                bool previousState = blockToEdit.selected;
+                                blockToEdit.selected = !previousState;
+                                
+                                if (blockToEdit.selected)
+                                {
+                                    blockToEdit.EnableOutline();
+                                    
+                                    // Trigger select event
+                                    if (GizmoEvents.Instance != null)
+                                    {
+                                        GizmoEvents.Instance.TriggerObjectSelected(blockToEdit.gameObject);
+                                    }
+                                }
+                                else
+                                {
+                                    blockToEdit.DisableOutline();
+                                    blockToEdit.DisableHoverOutline();
+                                    
+                                    // Trigger deselect event
+                                    if (GizmoEvents.Instance != null)
+                                    {
+                                        GizmoEvents.Instance.TriggerObjectDeselected(blockToEdit.gameObject);
+                                    }
+                                }
+                                
+                                // Update control objects and Gizmo position
+                                UpdateSelectedObjects();
+                                
+                                // Trigger selection updated event
+                                if (GizmoEvents.Instance != null && controlObjects != null)
+                                {
+                                    GizmoEvents.Instance.TriggerSelectionUpdated(controlObjects);
+                                }
+                            }
+                        }
+                    }
+                    
+                    // If clicked in empty space, deselect all
+                    if (!hitBlock && Input.GetMouseButtonDown(0))
+                    {
+                        var previouslySelected = controlObjects != null ? controlObjects.ToArray() : null;
+                        
+                        DeselectAllBlocks();
+                        
+                        // Trigger deselect events for all previously selected objects
+                        if (GizmoEvents.Instance != null && previouslySelected != null)
+                        {
+                            foreach (var obj in previouslySelected)
+                            {
+                                if (obj != null)
+                                {
+                                    GizmoEvents.Instance.TriggerObjectDeselected(obj);
+                                }
+                            }
+                            
+                            // Trigger selection updated (to empty array)
+                            GizmoEvents.Instance.TriggerSelectionUpdated(new GameObject[0]);
+                        }
+                    }
+                }
+            }
+            
+            // Update after mouse button release
+            if (Input.GetMouseButtonUp(0) && controlObjects != null)
+            {
+                // Save state before snapping
+                if (history.historyEnabled)
+                    history.SaveState(controlObjects);
+                
+                // Apply snapping to positions
+                ApplyPositionSnapping();
+                
+                // Update Gizmo position after snapping
+                UpdateSelectedObjects();
+            }
+        }
+        
+        private void HandleMoveControl()
+        {
+            if (controlObjects == null || selected == null) 
+                return;
+            
+            // Calculate the current cursor position in world space
+            Vector3 screenPoint = Camera.main.WorldToScreenPoint(transform.position);
+            Vector3 curScreenPoint = new Vector3(Input.mousePosition.x, Input.mousePosition.y, screenPoint.z);
+            Vector3 curPosition = Camera.main.ScreenToWorldPoint(curScreenPoint);
+            
+            // Initialize offset only on first click
+            if (thisOffset == Vector3.zero)
+                thisOffset = transform.position - curPosition;
+            
+            // Get information about the selected element
+            Vector3 elementAxis = visuals.GetElementAxis(selected);
+            bool isArrow = selected == visuals.xArrow || selected == visuals.yArrow || selected == visuals.zArrow;
+            bool isPlane = selected == visuals.xPlane || selected == visuals.yPlane || selected == visuals.zPlane;
+            
+            // Calculate new position depending on element type
+            Vector3 newPosition = transform.position;
+            
+            if (isArrow)
+            {
+                // Moving along an axis
+                if (controller.localControl)
+                {
+                    // Local movement along axis
+                    Vector3 localAxis = transform.TransformDirection(elementAxis);
+                    Vector3 movement = Vector3.Project(curPosition + thisOffset - transform.position, localAxis);
+                    newPosition += movement;
+                }
+                else
+                {
+                    // Global movement along axis
+                    if (elementAxis == Vector3.right)
+                        newPosition.x = curPosition.x + thisOffset.x;
+                    else if (elementAxis == Vector3.up)
+                        newPosition.y = curPosition.y + thisOffset.y;
+                    else if (elementAxis == Vector3.forward)
+                        newPosition.z = curPosition.z + thisOffset.z;
+                }
+            }
+            else if (isPlane)
+            {
+                // Moving on a plane
+                if (controller.localControl)
+                {
+                    // Local movement on plane
+                    if (elementAxis == Vector3.right) // YZ plane
+                    {
+                        Vector3 localY = transform.TransformDirection(Vector3.up);
+                        Vector3 localZ = transform.TransformDirection(Vector3.forward);
+                        Vector3 movementY = Vector3.Project(curPosition + thisOffset - transform.position, localY);
+                        Vector3 movementZ = Vector3.Project(curPosition + thisOffset - transform.position, localZ);
+                        newPosition += movementY + movementZ;
+                    }
+                    else if (elementAxis == Vector3.up) // XZ plane
+                    {
+                        Vector3 localX = transform.TransformDirection(Vector3.right);
+                        Vector3 localZ = transform.TransformDirection(Vector3.forward);
+                        Vector3 movementX = Vector3.Project(curPosition + thisOffset - transform.position, localX);
+                        Vector3 movementZ = Vector3.Project(curPosition + thisOffset - transform.position, localZ);
+                        newPosition += movementX + movementZ;
+                    }
+                    else // XY plane
+                    {
+                        Vector3 localX = transform.TransformDirection(Vector3.right);
+                        Vector3 localY = transform.TransformDirection(Vector3.up);
+                        Vector3 movementX = Vector3.Project(curPosition + thisOffset - transform.position, localX);
+                        Vector3 movementY = Vector3.Project(curPosition + thisOffset - transform.position, localY);
+                        newPosition += movementX + movementY;
+                    }
+                }
+                else
+                {
+                    // Global movement on plane
+                    if (elementAxis == Vector3.right) // YZ plane
+                    {
+                        newPosition.y = curPosition.y + thisOffset.y;
+                        newPosition.z = curPosition.z + thisOffset.z;
+                    }
+                    else if (elementAxis == Vector3.up) // XZ plane
+                    {
+                        newPosition.x = curPosition.x + thisOffset.x;
+                        newPosition.z = curPosition.z + thisOffset.z;
+                    }
+                    else // XY plane
+                    {
+                        newPosition.x = curPosition.x + thisOffset.x;
+                        newPosition.y = curPosition.y + thisOffset.y;
+                    }
+                }
+            }
+            
+            // Remove snapping during dragging - it will only happen after movement ends
+            
+            // Set new Gizmo position
+            transform.position = newPosition;
+            
+            // Update positions of all selected blocks
+            if (controlObjects != null)
+            {
+                for (int i = 0; i < controlObjects.Length; i++)
+                {
+                    if (controlObjects[i] != null)
+                        controlObjects[i].transform.position = transform.position - objectOffsets[i];
+                }
+            }
+        }
+        
+        private void HandleRotateTool()
+        {
+            if (controlObjects == null)
+            {
+                visuals.SetGizmoVisibility(false, false, false);
+                // Even if no blocks are selected, we still allow them to be selected
+            }
+            else
+            {
+                visuals.SetGizmoVisibility(false, true, false);
+                
+                if (controller.localControl)
+                    transform.rotation = controlObjects[0].transform.rotation;
+                else
+                    transform.rotation = Quaternion.identity;
+                    
+                // Make looker face the camera
+                if (visuals.looker != null)
+                    visuals.looker.transform.LookAt(Camera.main.transform.position);
+                
+                if (Input.GetMouseButtonDown(0) && selected != null)
+                {
+                    history.SaveState(controlObjects);
+                    mousePrevPos = Input.mousePosition;
+                    prevGizmoPosition = transform.position;
+                    
+                    // Trigger rotation start event
+                    if (GizmoEvents.Instance != null)
+                    {
+                        Quaternion[] startRotations = new Quaternion[controlObjects.Length];
+                        for (int i = 0; i < controlObjects.Length; i++)
+                        {
+                            if (controlObjects[i] != null)
+                            {
+                                startRotations[i] = controlObjects[i].transform.rotation;
+                            }
+                        }
+                        
+                        GizmoEvents.Instance.TriggerRotateStart(controlObjects, startRotations);
+                    }
+                }
+            }
+            
+            if (Input.GetMouseButton(0) && selected != null)
+            {
+                // Calculate difference in mouse position from last frame
+                float mouseDeltaX = (Input.mousePosition.x - mousePrevPos.x) * 0.5f; // Reduce sensitivity
+                float mouseDeltaY = (Input.mousePosition.y - mousePrevPos.y) * 0.5f;
+                
+                // Make sure we don't have too large movements
+                mouseDeltaX = Mathf.Clamp(mouseDeltaX, -5f, 5f);
+                mouseDeltaY = Mathf.Clamp(mouseDeltaY, -5f, 5f);
+                
+                // Store original rotations for event
+                Quaternion[] startRotations = null;
+                Quaternion[] currentRotations = null;
+                
+                if (GizmoEvents.Instance != null && controlObjects != null)
+                {
+                    startRotations = new Quaternion[controlObjects.Length];
+                    currentRotations = new Quaternion[controlObjects.Length];
+                    
+                    // Store the original rotations before applying the new rotation
+                    for (int i = 0; i < controlObjects.Length; i++)
+                    {
+                        if (controlObjects[i] != null)
+                        {
+                            startRotations[i] = controlObjects[i].transform.rotation;
+                        }
+                    }
+                }
+                
+                foreach (GameObject obj in controlObjects)
+                {
+                    if (obj == null) continue;
+                    
+                    // Select the appropriate rotation axis
+                    Vector3 rotationAxis = Vector3.zero;
+                    float rotationAmount = 0;
+                    
+                    if (selected == visuals.xRot)
+                    {
+                        rotationAxis = controller.localControl ? transform.right : Vector3.right;
+                        rotationAmount = mouseDeltaY;
+                    }
+                    else if (selected == visuals.yRot)
+                    {
+                        rotationAxis = controller.localControl ? transform.up : Vector3.up;
+                        rotationAmount = -mouseDeltaX;
+                    }
+                    else if (selected == visuals.zRot)
+                    {
+                        rotationAxis = controller.localControl ? transform.forward : Vector3.forward;
+                        rotationAmount = mouseDeltaY;
+                    }
+                    
+                    // Perform rotation
+                    if (rotationAxis != Vector3.zero)
+                    {
+                        obj.transform.RotateAround(transform.position, rotationAxis, rotationAmount);
+                    }
+                }
+                
+                // Capture current rotations after applying rotation and trigger event
+                if (GizmoEvents.Instance != null && controlObjects != null && startRotations != null)
+                {
+                    // Store the rotations after applying the new rotation
+                    for (int i = 0; i < controlObjects.Length; i++)
+                    {
+                        if (controlObjects[i] != null)
+                        {
+                            currentRotations[i] = controlObjects[i].transform.rotation;
+                        }
+                    }
+                    
+                    // Trigger the rotating event
+                    GizmoEvents.Instance.TriggerRotating(controlObjects, startRotations, currentRotations);
+                }
+                
+                // Update mouse position
+                mousePrevPos = Input.mousePosition;
+            }
+            else if (Input.GetMouseButtonUp(0) && selected != null && controlObjects != null)
+            {
+                // Trigger rotate end event
+                if (GizmoEvents.Instance != null)
+                {
+                    Quaternion[] startRotations = new Quaternion[controlObjects.Length];
+                    Quaternion[] endRotations = new Quaternion[controlObjects.Length];
+                    
+                    for (int i = 0; i < controlObjects.Length; i++)
+                    {
+                        if (controlObjects[i] != null)
+                        {
+                            // Get the original rotation from history
+                            startRotations[i] = history.GetLastState(controlObjects[i]).rotation;
+                            // Get the current rotation
+                            endRotations[i] = controlObjects[i].transform.rotation;
+                        }
+                    }
+                    
+                    GizmoEvents.Instance.TriggerRotateEnd(controlObjects, startRotations, endRotations);
+                }
+            }
+            else
+            {
+                // Handle selection of rotation controls
+                RaycastHit hitIs;
+                bool hitGizmoElement = false;
+                bool hitAnyObject = false;
+                
+                if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out hitIs, Mathf.Infinity, maskSel))
+                {
+                    hitAnyObject = true;
+                    GameObject hitObject = hitIs.transform.gameObject;
+                    
+                    if (visuals.IsRotateElement(hitObject))
+                    {
+                        // Hit a Gizmo element
+                        hitGizmoElement = true;
+                        
+                        if (selected == null)
+                            visuals.HighlightGizmoElement(hitObject);
+                        else if (hitObject != selected)
+                        {
+                            visuals.RevertHighlight();
+                            visuals.HighlightGizmoElement(hitObject);
+                        }
+                        
+                        selected = hitObject;
+                    }
+                    else if (selected != null)
+                    {
+                        visuals.RevertHighlight();
+                        selected = null;
+                    }
+                }
+                else if (selected != null)
+                {
+                    visuals.RevertHighlight();
+                    selected = null;
+                }
+                
+                // If Gizmo element was not hit, try to select a block
+                if (!hitGizmoElement && Input.GetMouseButtonDown(0))
+                {
+                    // Try to select a block
+                    Ray rayS = Camera.main.ScreenPointToRay(Input.mousePosition);
+                    bool hitBlock = false;
+                    
+                    if (Physics.Raycast(rayS, out RaycastHit hitBlockInfo))
+                    {
+                        if (hitBlockInfo.transform.CompareTag(controller.tagToFind))
+                        {
+                            hitBlock = true;
+                            BlockToEdit blockToEdit = hitBlockInfo.transform.GetComponent<BlockToEdit>();
+                            if (blockToEdit != null)
+                            {
+                                // Check if this is part of a group - if it is, we'll select the group instead
+                                bool selectedParent = blockToEdit.SelectGroupParentIfPartOfGroup();
+                                if (selectedParent)
+                                {
+                                    // Already handled by SelectGroupParentIfPartOfGroup
+                                    UpdateSelectedObjects();
+                                    return;
+                                }
+                                
+                                // If not part of a group, proceed with normal selection
+                                
+                                // Sprawdź czy lewy Shift jest wciśnięty - jeśli nie, odznacz inne obiekty
+                                if (!Input.GetKey(controller.selectMultipleCode))
+                                {
+                                    // Deselect all blocks except the one being clicked
+                                    foreach (var obj in BlockToEdit.AllObjects)
+                                    {
+                                        if (obj != null && obj != blockToEdit)
+                                        {
+                                            bool wasSelected = obj.selected;
+                                            obj.selected = false;
+                                            obj.DisableOutline();
+                                            
+                                            // Trigger deselect event
+                                            if (wasSelected && GizmoEvents.Instance != null)
+                                            {
+                                                GizmoEvents.Instance.TriggerObjectDeselected(obj.gameObject);
+                                            }
+                                        }
+                                    }
+                                }
+                                
+                                // Toggle selection
+                                bool previousState = blockToEdit.selected;
+                                blockToEdit.selected = !previousState;
+                                if (blockToEdit.selected)
+                                {
+                                    blockToEdit.EnableOutline();
+                                    
+                                    // Trigger select event
+                                    if (GizmoEvents.Instance != null)
+                                    {
+                                        GizmoEvents.Instance.TriggerObjectSelected(blockToEdit.gameObject);
+                                    }
+                                }
+                                else
+                                {
+                                    blockToEdit.DisableOutline();
+                                    
+                                    // Trigger deselect event
+                                    if (GizmoEvents.Instance != null)
+                                    {
+                                        GizmoEvents.Instance.TriggerObjectDeselected(blockToEdit.gameObject);
+                                    }
+                                }
+                                
+                                // Update control objects and Gizmo position
+                                UpdateSelectedObjects();
+                            }
+                        }
+                    }
+                    
+                    // If clicked in empty space, deselect all
+                    if (!hitBlock && Input.GetMouseButtonDown(0))
+                    {
+                        var previouslySelected = controlObjects != null ? controlObjects.ToArray() : null;
+                        
+                        DeselectAllBlocks();
+                        
+                        // Trigger deselect events for all previously selected objects
+                        if (GizmoEvents.Instance != null && previouslySelected != null)
+                        {
+                            foreach (var obj in previouslySelected)
+                            {
+                                if (obj != null)
+                                {
+                                    GizmoEvents.Instance.TriggerObjectDeselected(obj);
+                                }
+                            }
+                            
+                            // Trigger selection updated (to empty array)
+                            GizmoEvents.Instance.TriggerSelectionUpdated(new GameObject[0]);
+                        }
+                    }
+                }
+            }
+            
+                    }
+                }
+            }
+            
+            // Update after mouse button release
+            if (Input.GetMouseButtonUp(0) && controlObjects != null)
+            {
+                // Save state before snapping
+                if (history.historyEnabled)
+                    history.SaveState(controlObjects);
+                
+                // Force full position update
+                UpdateSelectedObjects();
+            }
+        }
+        
+        private void HandleSelectTool()
+        {
+            visuals.SetGizmoVisibility(false, false, false);
+            
+            if (!Camera.main) return;
+            
+            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+            bool hitAnyBlock = false;
+            bool hitAnyObject = false;
+            
+            if (Physics.Raycast(ray, out RaycastHit hitInfo))
+            {
+                hitAnyObject = true;
+                if (hitInfo.transform.CompareTag(controller.tagToFind))
+                {
+                    BlockToEdit blockToEdit = hitInfo.transform.GetComponent<BlockToEdit>();
+                    if (blockToEdit != null)
+                    {
+                        // Mouse is over block
+                        hitAnyBlock = true;
+                        
+                        if (Input.GetMouseButtonDown(0))
+                        {
+                            // Check if this is part of a group - if it is, we'll select the group instead
+                            bool selectedParent = blockToEdit.SelectGroupParentIfPartOfGroup();
+                            if (selectedParent)
+                            {
+                                // Already handled by SelectGroupParentIfPartOfGroup
+                                UpdateSelectedObjects();
+                                return;
+                            }
+                            
+                            // Sprawdź czy lewy Shift jest wciśnięty - jeśli nie, odznacz inne obiekty
+                            if (!Input.GetKey(controller.selectMultipleCode))
+                            {
+                                // Deselect all blocks except the one being clicked
+                                foreach (var obj in BlockToEdit.AllObjects)
+                                {
+                                    if (obj != null && obj != blockToEdit)
+                                    {
+                                        obj.selected = false;
+                                        obj.DisableOutline();
+                                        obj.DisableHoverOutline(); // Also disable hover outline
+                                    }
+                                }
+                            }
+                            
+                            // Toggle selection state of clicked block
+                            blockToEdit.selected = !blockToEdit.selected;
+                            if (blockToEdit.selected)
+                            {
+                                blockToEdit.EnableOutline();
+                                
+                                // Trigger select event
+                                if (GizmoEvents.Instance != null)
+                                {
+                                    GizmoEvents.Instance.TriggerObjectSelected(blockToEdit.gameObject);
+                                }
+                            }
+                            else
+                            {
+                                blockToEdit.DisableOutline();
+                                blockToEdit.DisableHoverOutline(); // Also disable hover outline
+                                
+                                // Trigger deselect event
+                                if (GizmoEvents.Instance != null)
+                                {
+                                    GizmoEvents.Instance.TriggerObjectDeselected(blockToEdit.gameObject);
+                                }
+                            }
+                            
+                            // Update Gizmo position after selection changes
+                            UpdateSelectedObjects();
+                            
+                            // Trigger selection updated event
+                            if (GizmoEvents.Instance != null && controlObjects != null)
+                            {
+                                GizmoEvents.Instance.TriggerSelectionUpdated(controlObjects);
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // If clicked in the air, deselect all blocks
+            if (!hitAnyObject && Input.GetMouseButtonDown(0))
+            {
+                var previouslySelected = controlObjects != null ? controlObjects.ToArray() : null;
+                
+                DeselectAllBlocks();
+                
+                // Trigger deselect events for all previously selected objects
+                if (GizmoEvents.Instance != null && previouslySelected != null)
+                {
+                    foreach (var obj in previouslySelected)
+                    {
+                        if (obj != null)
+                        {
+                            GizmoEvents.Instance.TriggerObjectDeselected(obj);
+                        }
+                    }
+                    
+                    // Trigger selection updated (to empty array)
+                    GizmoEvents.Instance.TriggerSelectionUpdated(new GameObject[0]);
+                }
+            }
+            
+            // We don't need to handle hover highlighting here anymore
+            // It's now handled centrally in UpdateActiveTool via HandleHoverHighlighting
+        }
+        
+        private void HandleDeleteTool()
+        {
+            visuals.SetGizmoVisibility(false, false, false);
+            
+            if (!Camera.main) return;
+            
+            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+            
+            if (Physics.Raycast(ray, out RaycastHit hitInfo) && 
+                hitInfo.transform.CompareTag(controller.tagToFind) &&
+                !UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
+            {
+                BlockToEdit editorObj = hitInfo.transform.GetComponent<BlockToEdit>();
+                if (editorObj != null)
+                {
+                    editorObj.ChangeMaterialToRed();
+                    
+                    if (Input.GetMouseButtonDown(0))
+                    {
+                        GameObject objToDelete = hitInfo.transform.gameObject;
+                        
+                        // Save state for history before deletion
+                        history.SaveDeletionState(objToDelete);
+                        
+                        // Trigger delete event before destroying the object
+                        if (GizmoEvents.Instance != null)
+                        {
+                            GizmoEvents.Instance.TriggerObjectDeleted(objToDelete);
+                        }
+                        
+                        Destroy(objToDelete);
+                    }
+                }
+            }
+        }
+        
+        private void HandleScaleTool()
+        {
+            if (controlObjects == null)
+            {
+                visuals.SetGizmoVisibility(false, false, false);
+            }
+            else
+            {
+                visuals.SetGizmoVisibility(false, false, true);
+                
+                // Always apply rotation from the object when only one object is selected
+                if (controlObjects.Length == 1)
+                {
+                    transform.rotation = controlObjects[0].transform.rotation;
+                    
+                    // Position scaling handles outside the object boundaries
+                    if (visuals.xScalePos != null && visuals.xScaleNeg != null && 
+                        visuals.yScalePos != null && visuals.yScaleNeg != null && 
+                        visuals.zScalePos != null && visuals.zScaleNeg != null)
+                    {
+                        // Get the object size and place handles at appropriate distance
+                        GameObject obj = controlObjects[0];
+                        
+                        // Update the handle positions by calling our dedicated method
+                        UpdateScaleHandlePositions(obj);
+                    }
+                }
+                // For multiple objects, always use global orientation for visual consistency
+                else
+                {
+                    transform.rotation = Quaternion.identity;
+                }
+                
+                if (Input.GetMouseButtonDown(0) && selected != null)
+                {
+                    history.SaveState(controlObjects);
+                    mousePrevPos = Input.mousePosition;
+                    prevGizmoPosition = transform.position;
+                    
+                    // Reset scaling initialization flag on new click
+                    scaleInitialized = false;
+                    
+                    // Store original scales
+                    if (controlObjects != null && controlObjects.Length > 0)
+                    {
+                        originalScales = new Vector3[controlObjects.Length];
+                        for (int i = 0; i < controlObjects.Length; i++)
+                        {
+                            if (controlObjects[i] != null)
+                                originalScales[i] = controlObjects[i].transform.localScale;
+                        }
+                    }
+                    
+                    // Trigger scale start event
+                    if (GizmoEvents.Instance != null && controlObjects != null)
+                    {
+                        Vector3[] startScales = new Vector3[controlObjects.Length];
+                        for (int i = 0; i < controlObjects.Length; i++)
+                        {
+                            if (controlObjects[i] != null)
+                            {
+                                startScales[i] = controlObjects[i].transform.localScale;
+                            }
+                        }
+                        
+                        GizmoEvents.Instance.TriggerScaleStart(controlObjects, startScales);
+                    }
+                }
+            }
+            
+            if (Input.GetMouseButton(0) && selected != null)
+            {
+                // Calculate mouse movement
+                float mouseDeltaX = Input.mousePosition.x - mousePrevPos.x;
+                float mouseDeltaY = Input.mousePosition.y - mousePrevPos.y;
+            
+                // Camera-based scaling sensitivity - further away = more sensitive
+                float cameraDistance = Vector3.Distance(Camera.main.transform.position, transform.position);
+                float baseSensitivity = 0.01f; // Base sensitivity value
+                float distanceModifier = cameraDistance * 0.1f; // Adjust scale based on distance
+                float sensitivity = baseSensitivity * Mathf.Max(distanceModifier, 1f);
+                
+                // Store original scales for event
+                Vector3[] startScales = null;
+                Vector3[] currentScales = null;
+                
+                if (GizmoEvents.Instance != null && controlObjects != null)
+                {
+                    startScales = new Vector3[controlObjects.Length];
+                    currentScales = new Vector3[controlObjects.Length];
+                    
+                    // Store the original scales before applying the new scale
+                    for (int i = 0; i < controlObjects.Length; i++)
+                    {
+                        if (controlObjects[i] != null)
+                        {
+                            startScales[i] = controlObjects[i].transform.localScale;
+                        }
+                    }
+                }
+                
+                // Scaling objects
+                foreach (GameObject obj in controlObjects)
+                {
+                    if (obj == null) continue;
+                    
+                    Vector3 originalScale = obj.transform.localScale;
+                    Vector3 newScale = originalScale;
+                    Vector3 newPosition = obj.transform.position;
+                    
+                    // Handle uniform/multi-object scaling
+                    if (controlObjects.Length > 1 || selected == visuals.allScale)
+                    {
+                        // Get the direction from screen center to mouse position to determine scaling direction
+                        Vector2 screenCenter = new Vector2(Screen.width / 2, Screen.height / 2);
+                        Vector2 mouseDir = new Vector2(Input.mousePosition.x, Input.mousePosition.y) - screenCenter;
+                        Vector2 prevMouseDir = new Vector2(mousePrevPos.x, mousePrevPos.y) - screenCenter;
+                        
+                        // Initialize scaling on first movement
+                        if (!scaleInitialized)
+                        {
+                            scaleInitialized = true;
+                            continue; // Skip scaling on the first frame to avoid jumps
+                        }
+                        
+                        // Calculate if we're moving away from center (increase) or toward center (decrease)
+                        bool movingAway = mouseDir.magnitude > prevMouseDir.magnitude;
+                        
+                        // Calculate scale change based on mouse movement
+                        float uniformScaleFactor = (movingAway ? 1 : -1) * 
+                                           (mouseDeltaX * mouseDeltaX + mouseDeltaY * mouseDeltaY) * 
+                                           sensitivity * 0.01f;
+                        
+                        // Apply uniform scale in all directions
+                        newScale = originalScale * (1.0f + uniformScaleFactor);
+                        
+                        // Apply grid snapping if enabled
+                        if (controller.snap)
+                        {
+                            float snapValue = controller.gridSnap > 0 ? controller.gridSnap : gridSnapb;
+                            newScale.x = Mathf.Round(newScale.x / snapValue) * snapValue;
+                            newScale.y = Mathf.Round(newScale.y / snapValue) * snapValue;
+                            newScale.z = Mathf.Round(newScale.z / snapValue) * snapValue;
+                        }
+                        
+                        // Limit minimum scale
+                        newScale.x = Mathf.Max(newScale.x, 0.05f);
+                        newScale.y = Mathf.Max(newScale.y, 0.05f);
+                        newScale.z = Mathf.Max(newScale.z, 0.05f);
+                        
+                        // For multi-object scaling, also scale the distance between objects
+                        if (controlObjects.Length > 1)
+                        {
+                            // Calculate vector from gizmo center to object
+                            Vector3 directionFromCenter = obj.transform.position - transform.position;
+                            
+                            // Scale this distance by the same factor as the object scale
+                            float distanceScaleFactor = 1.0f + uniformScaleFactor;
+                            
+                            // Limit minimum distance scaling to prevent objects collapsing
+                            distanceScaleFactor = Mathf.Max(distanceScaleFactor, 0.05f);
+                            
+                            // Calculate new position based on scaled distance from center
+                            newPosition = transform.position + (directionFromCenter * distanceScaleFactor);
+                        }
+                        
+                        // Apply new scale and position
+                        obj.transform.localScale = newScale;
+                        
+                        // For multiple objects, update position to scale distances between objects
+                        if (controlObjects.Length > 1)
+                        {
+                            obj.transform.position = newPosition;
+                        }
+                        continue;
+                    }
+                    
+                    // Single-axis scaling (X, Y, or Z handle)
+                    int axisIndex = 0; // 0=X, 1=Y, 2=Z
+                    bool isPositiveHandle = false;
+                    Vector3 worldAxisDir = Vector3.zero;
+                    Vector3 oppositeAnchorPoint = Vector3.zero;
+                    
+                    // Determine which handle is selected, axis direction, and opposite anchor point
+                    if (selected == visuals.xScalePos)
+                    {
+                        axisIndex = 0;
+                        isPositiveHandle = true;
+                        worldAxisDir = obj.transform.right;
+                    }
+                    else if (selected == visuals.xScaleNeg)
+                    {
+                        axisIndex = 0;
+                        isPositiveHandle = false;
+                        worldAxisDir = -obj.transform.right;
+                    }
+                    else if (selected == visuals.yScalePos)
+                    {
+                        axisIndex = 1;
+                        isPositiveHandle = true;
+                        worldAxisDir = obj.transform.up;
+                    }
+                    else if (selected == visuals.yScaleNeg)
+                    {
+                        axisIndex = 1;
+                        isPositiveHandle = false;
+                        worldAxisDir = -obj.transform.up;
+                    }
+                    else if (selected == visuals.zScalePos)
+                    {
+                        axisIndex = 2;
+                        isPositiveHandle = true;
+                        worldAxisDir = obj.transform.forward;
+                    }
+                    else if (selected == visuals.zScaleNeg)
+                    {
+                        axisIndex = 2;
+                        isPositiveHandle = false;
+                        worldAxisDir = -obj.transform.forward;
+                    }
+                    
+                    // Determine the anchor point in the local space of the object
+                    Vector3 localAnchorPoint = Vector3.zero;
+                    if (axisIndex == 0) // X axis
+                        localAnchorPoint = new Vector3(isPositiveHandle ? -0.5f : 0.5f, 0, 0);
+                    else if (axisIndex == 1) // Y axis
+                        localAnchorPoint = new Vector3(0, isPositiveHandle ? -0.5f : 0.5f, 0);
+                    else // Z axis
+                        localAnchorPoint = new Vector3(0, 0, isPositiveHandle ? -0.5f : 0.5f);
+                    
+                    // Transform the local anchor point to the global space
+                    oppositeAnchorPoint = obj.transform.TransformPoint(localAnchorPoint);
+                    
+                    // Create a plane perpendicular to the camera view but aligned with the scaling axis
+                    Vector3 cameraForward = Camera.main.transform.forward;
+                    Vector3 planeNormal = Vector3.Cross(Vector3.Cross(worldAxisDir, cameraForward).normalized, worldAxisDir).normalized;
+                    
+                    // If the plane normal is too close to zero (camera aligned with axis), use the camera right vector
+                    if (planeNormal.magnitude < 0.1f)
+                    {
+                        planeNormal = Vector3.Cross(Camera.main.transform.right, worldAxisDir).normalized;
+                    }
+                    
+                    // Create a dragging plane passing through the handle (not the anchor point)
+                    // We need to get the current handle position based on the current scale
+                    Vector3 handlePosition = Vector3.zero;
+                    
+                    // Determine handle position in local space and transform to world space
+                    Vector3 localHandlePoint = Vector3.zero;
+                    if (axisIndex == 0) // X axis
+                        localHandlePoint = new Vector3(isPositiveHandle ? 0.5f : -0.5f, 0, 0);
+                    else if (axisIndex == 1) // Y axis
+                        localHandlePoint = new Vector3(0, isPositiveHandle ? 0.5f : -0.5f, 0);
+                    else // Z axis
+                        localHandlePoint = new Vector3(0, 0, isPositiveHandle ? 0.5f : -0.5f);
+                    
+                    // Transform handle position to world space
+                    handlePosition = obj.transform.TransformPoint(localHandlePoint);
+                    
+                    // Now create a plane for mouse interaction that's perpendicular to the camera view direction
+                    // This makes it easier to hit with the mouse ray regardless of viewing angle
+                    Plane draggingPlane = new Plane(planeNormal, handlePosition);
+                    
+                    // teleport mouse cursor to the center of the handle VERY IMPORTANT
+                    if (Input.GetMouseButtonDown(0) && !scaleInitialized)
+                    {
+                        // Convert handle position from world space to screen position
+                        Vector2 screenHandlePos = Camera.main.WorldToScreenPoint(handlePosition);
+                        
+                        // Teleport mouse cursor to the center of the handle
+                        Mouse.current.WarpCursorPosition(screenHandlePos);
+                        
+                        // Update previous mouse position for later delta movement calculations
+                        mousePrevPos = screenHandlePos;
+
+                        break; //break there is needed, without break there will be visual bug
+                    }
+                    
+                    // Cast a ray from the camera through the mouse position
+                    Ray mouseRay = Camera.main.ScreenPointToRay(Input.mousePosition);
+                    float distance;
+                    
+                    // If the ray intersects the dragging plane
+                    if (draggingPlane.Raycast(mouseRay, out distance))
+                    {
+                        // Get the world position where the mouse ray intersects the dragging plane
+                        Vector3 hitPoint = mouseRay.origin + mouseRay.direction * distance;
+                        
+                        // Project the mouse hit point directly onto the axis for direct manipulation
+                        Vector3 axisHitPoint = oppositeAnchorPoint + Vector3.Project(hitPoint - oppositeAnchorPoint, worldAxisDir);
+                        
+                        // Calculate the handle distance from the anchor point based on direct mouse position
+                        float handleDistance = Vector3.Distance(oppositeAnchorPoint, axisHitPoint);
+                        
+                        // Check if the handle is on the correct side of the anchor point
+                        Vector3 directionToHandle = (axisHitPoint - oppositeAnchorPoint).normalized;
+                        bool correctDirection = Vector3.Dot(directionToHandle, worldAxisDir) > 0;
+                        
+                        if (!correctDirection)
+                        {
+                            // Handle is on wrong side of anchor, set to minimum scale
+                            handleDistance = 0.05f;
+                            axisHitPoint = oppositeAnchorPoint + worldAxisDir * handleDistance;
+                        }
+                        
+                        // The scale is 1x 
+                        float newAxisScale = handleDistance * 1f;
+                        
+                        // Apply grid snapping if enabled
+                        if (controller.snap)
+                        {
+                            float snapValue = controller.gridSnap > 0 ? controller.gridSnap : gridSnapb;
+                            newAxisScale = Mathf.Round(newAxisScale / snapValue) * snapValue;
+                            
+                            // Recalculate handle distance and position based on snapped scale
+                            handleDistance = newAxisScale * 0.5f;
+                            axisHitPoint = oppositeAnchorPoint + worldAxisDir * handleDistance;
+                        }
+                        
+                        // Ensure minimum scale constraint
+                        newAxisScale = Mathf.Max(newAxisScale, 0.05f);
+                        handleDistance = newAxisScale * 0.5f;
+                        
+                        // Update the appropriate scale component
+                        if (axisIndex == 0) // X axis
+                        {
+                            newScale.x = newAxisScale;
+                        }
+                        else if (axisIndex == 1) // Y axis
+                        {
+                            newScale.y = newAxisScale;
+                        }
+                        else // Z axis
+                        {
+                            newScale.z = newAxisScale;
+                        }
+                        
+                        // Position the object so the anchor point stays fixed
+                        // This is the key to making scaling happen from the handle, not the center
+                        newPosition = oppositeAnchorPoint + (worldAxisDir * handleDistance);
+                    }
+                    
+                    // Apply the new scale and position
+                    obj.transform.localScale = newScale;
+                    obj.transform.position = newPosition;
+                }
+                    
+                // Update scale handle positions
+                if (controlObjects.Length == 1)
+                {
+                    UpdateScaleHandlePositions(controlObjects[0]);
+                }
+                
+                // Update gizmo position
+                UpdateSelectedObjects();
+                
+                // Update mouse position
+                mousePrevPos = Input.mousePosition;
+                
+                // Capture current scales after applying scaling and trigger event
+                if (GizmoEvents.Instance != null && controlObjects != null && startScales != null)
+                {
+                    // Store the scales after applying the new scale
+                    for (int i = 0; i < controlObjects.Length; i++)
+                    {
+                        if (controlObjects[i] != null)
+                        {
+                            currentScales[i] = controlObjects[i].transform.localScale;
+                        }
+                    }
+                    
+                    // Trigger the scaling event
+                    GizmoEvents.Instance.TriggerScaling(controlObjects, startScales, currentScales);
+                }
+            }
+            else if (Input.GetMouseButtonUp(0) && selected != null && controlObjects != null)
+            {
+                // Trigger scale end event
+                if (GizmoEvents.Instance != null)
+                {
+                    Vector3[] startScales = new Vector3[controlObjects.Length];
+                    Vector3[] endScales = new Vector3[controlObjects.Length];
+                    
+                    for (int i = 0; i < controlObjects.Length; i++)
+                    {
+                        if (controlObjects[i] != null)
+                        {
+                            // Get the original scale from history
+                            startScales[i] = history.GetLastState(controlObjects[i]).localScale;
+                            // Get the current scale
+                            endScales[i] = controlObjects[i].transform.localScale;
+                        }
+                    }
+                    
+                    GizmoEvents.Instance.TriggerScaleEnd(controlObjects, startScales, endScales);
+                }
+            }
+            else
+            {
+                // Handle selection of scaling handles
+                RaycastHit hitIs;
+                bool hitGizmoElement = false;
+                
+                if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out hitIs, Mathf.Infinity, maskSel))
+                {
+                    GameObject hitObject = hitIs.transform.gameObject;
+                    
+                    if (visuals.IsScaleElement(hitObject))
+                    {
+                        hitGizmoElement = true;
+                        
+                        if (selected == null)
+                            visuals.HighlightGizmoElement(hitObject);
+                        else if (hitObject != selected)
+                        {
+                            visuals.RevertHighlight();
+                            visuals.HighlightGizmoElement(hitObject);
+                        }
+                        
+                        selected = hitObject;
+                    }
+                    else if (selected != null)
+                    {
+                        visuals.RevertHighlight();
+                        selected = null;
+                    }
+                }
+                else if (selected != null)
+                {
+                    visuals.RevertHighlight();
+                    selected = null;
+                }
+                
+                // If gizmo handle was not hit, try to select a block
+                if (!hitGizmoElement && Input.GetMouseButtonDown(0))
+                {
+                    // Try to select a block
+                    Ray rayS = Camera.main.ScreenPointToRay(Input.mousePosition);
+                    bool hitBlock = false;
+                    
+                    if (Physics.Raycast(rayS, out RaycastHit hitBlockInfo))
+                    {
+                        if (hitBlockInfo.transform.CompareTag(controller.tagToFind))
+                        {
+                            hitBlock = true;
+                            BlockToEdit blockToEdit = hitBlockInfo.transform.GetComponent<BlockToEdit>();
+                            if (blockToEdit != null)
+                            {
+                                // Check if this is part of a group - if it is, we'll select the group instead
+                                bool selectedParent = blockToEdit.SelectGroupParentIfPartOfGroup();
+                                if (selectedParent)
+                                {
+                                    // Already handled by SelectGroupParentIfPartOfGroup
+                                    UpdateSelectedObjects();
+                                    return;
+                                }
+                                
+                                // If not part of a group, proceed with normal selection
+                                
+                                // Sprawdź czy lewy Shift jest wciśnięty - jeśli nie, odznacz inne obiekty
+                                if (!Input.GetKey(controller.selectMultipleCode))
+                                {
+                                    // Deselect all blocks except the one being clicked
+                                    foreach (var obj in BlockToEdit.AllObjects)
+                                    {
+                                        if (obj != null && obj != blockToEdit)
+                                        {
+                                            bool wasSelected = obj.selected;
+                                            obj.selected = false;
+                                            obj.DisableOutline();
+                                            obj.DisableHoverOutline();
+                                            
+                                            // Trigger deselect event
+                                            if (wasSelected && GizmoEvents.Instance != null)
+                                            {
+                                                GizmoEvents.Instance.TriggerObjectDeselected(obj.gameObject);
+                                            }
+                                        }
+                                    }
+                                }
+                                
+                                // Toggle selection
+                                bool previousState = blockToEdit.selected;
+                                blockToEdit.selected = !previousState;
+                                if (blockToEdit.selected)
+                                {
+                                    blockToEdit.EnableOutline();
+                                    
+                                    // Trigger select event
+                                    if (GizmoEvents.Instance != null)
+                                    {
+                                        GizmoEvents.Instance.TriggerObjectSelected(blockToEdit.gameObject);
+                                    }
+                                }
+                                else
+                                {
+                                    blockToEdit.DisableOutline();
+                                    blockToEdit.DisableHoverOutline();
+                                    
+                                    // Trigger deselect event
+                                    if (GizmoEvents.Instance != null)
+                                    {
+                                        GizmoEvents.Instance.TriggerObjectDeselected(blockToEdit.gameObject);
+                                    }
+                                }
+                                
+                                // Update control objects and Gizmo position
+                                UpdateSelectedObjects();
+                            }
+                        }
+                    }
+                    
+                    // If clicked in empty space, deselect all
+                    if (!hitBlock && Input.GetMouseButtonDown(0))
+                    {
+                        DeselectAllBlocks();
+                    }
+                }
+                
+                // Reset mouse position
+                mousePrevPos = Input.mousePosition;
+            }
+            
+            // Highlight blocks under cursor if not already selected
+            if (!Input.GetMouseButton(0))
+            {
+                // Skip highlighting when a selection box is being drawn
+                if (ShouldSkipHighlighting())
+                    return;
+                    
+                Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+                bool hitAnyBlock = false;
+                
+                if (Physics.Raycast(ray, out RaycastHit hitInfo))
+                {
+                    if (hitInfo.transform.CompareTag(controller.tagToFind))
+                    {
+                        BlockToEdit blockToEdit = hitInfo.transform.GetComponent<BlockToEdit>();
+                        if (blockToEdit != null && !blockToEdit.selected)
+                        {
+                            // Skip if we're in selection preview mode - let the selection tool handle it
+                            if (CanHighlightDuringSelection(blockToEdit))
+                                return;
+                                
+                            hitAnyBlock = true;
+                            blockToEdit.EnableOutline();
+                        }
+                    }
+                }
+                
+                // Restore original materials to blocks that are not selected and not under cursor
+                foreach (var obj in BlockToEdit.AllObjects)
+                {
+                    if (obj != null && !obj.selected)
+                    {
+                        // Skip if we're in selection preview mode - let the selection tool handle it
+                        if (CanHighlightDuringSelection(obj))
+                            continue;
+                        
+                        bool isUnderCursor = hitAnyBlock && Physics.Raycast(ray, out RaycastHit hit) && 
+                                           hit.transform.GetComponent<BlockToEdit>() == obj;
+                        
+                        if (!isUnderCursor)
+                        {
+                            obj.DisableOutline();
+                        }
+                    }
+                }
+            }
+            
+            // Update after mouse button release
+            if (Input.GetMouseButtonUp(0) && controlObjects != null)
+            {
+                // Save state before snapping
+                if (history.historyEnabled)
+                    history.SaveState(controlObjects);
+                
+                // Force full position update
+                UpdateSelectedObjects();
+            }
+        }
+        
+        // Helper method to deselect all blocks
+        private void DeselectAllBlocks()
+        {
+            if (BlockToEdit.AllObjects == null) return;
+            
+            // Deselect all blocks
+            foreach (var obj in BlockToEdit.AllObjects)
+            {
+                if (obj != null)
+                {
+                    obj.selected = false;
+                    obj.DisableOutline();
+                    obj.DisableHoverOutline(); // Also disable hover outline
+                }
+            }
+            
+            // Update control objects
+            controlObjects = null;
+        }
+        
+        /// <summary>
+        /// Checks if highlighting should be skipped (when selection box is active)
+        /// </summary>
+        private bool ShouldSkipHighlighting()
+        {
+            // Skip highlighting when selection box is active - this takes priority
+            if (selectionTool != null && selectionTool.IsSelectionBoxActive)
+                return true;
+            
+            // Skip highlighting when dragging objects
+            if (Input.GetMouseButton(0))
+                return true;
+                
+            // Skip highlighting when the cursor is over UI elements
+            if (UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
+                return true;
+                
+            return false;
+        }
+        
+        // Method to determine objects that should be highlighted during selection box preview
+        private bool CanHighlightDuringSelection(BlockToEdit obj)
+        {
+            // If we're not in selection box mode or obj is already selected, no need for special handling
+            if (selectionTool == null || !selectionTool.IsPreviewingSelection() || obj == null || obj.selected)
+                return false;
+            
+            // If we're in selection preview mode, the MultipleSelectionTool will handle highlighting
+            // through the PreviewSelectionHighlighting method
+            return true;
+        }
+        
+        #endregion
+        
+        /// <summary>
+        /// Returns the array of currently controlled objects.
+        /// </summary>
+        public GameObject[] GetSelectedObjects()
+        {
+            return controlObjects;
+        }
+        
+        /// <summary>
+        /// Duplicates the currently selected objects and selects the new copies.
+        /// </summary>
+        public void DuplicateSelectedObjects()
+        {
+            if (controlObjects == null || controlObjects.Length == 0)
+                return;
+                
+            // Keep a reference to original objects
+            GameObject[] originalObjects = controlObjects.ToArray();
+            List<GameObject> duplicatedObjects = new List<GameObject>();
+            
+            // Save state for history before duplication
+            if (history.historyEnabled)
+                history.SaveState(controlObjects);
+            
+            // Deselect all current objects
+            foreach (var obj in originalObjects)
+            {
+                if (obj != null)
+                {
+                    BlockToEdit blockToEdit = obj.GetComponent<BlockToEdit>();
+                    if (blockToEdit != null)
+                    {
+                        blockToEdit.selected = false;
+                        blockToEdit.DisableOutline();
+                    }
+                }
+            }
+            
+            // Create duplicates
+            foreach (var obj in originalObjects)
+            {
+                if (obj != null)
+                {
+                    // Create duplicate with offset
+                    GameObject duplicate = Instantiate(obj, 
+                        obj.transform.position + new Vector3(1f, 0f, 0f), 
+                        obj.transform.rotation);
+                        
+                    duplicate.name = obj.name + " (Copy)";
+                    
+                    // Set the tag to match the original
+                    duplicate.tag = controller.tagToFind;
+                    
+                    // Select the new object
+                    BlockToEdit blockToEdit = duplicate.GetComponent<BlockToEdit>();
+                    if (blockToEdit != null)
+                    {
+                        blockToEdit.selected = true;
+                        blockToEdit.EnableOutline();
+                    }
+                    
+                    duplicatedObjects.Add(duplicate);
+                }
+            }
+            
+            // Update control objects to select the new duplicates
+            UpdateSelectedObjects();
+            
+            // Trigger duplication event
+            if (GizmoEvents.Instance != null && duplicatedObjects.Count > 0)
+            {
+                GizmoEvents.Instance.TriggerObjectsDuplicated(originalObjects, duplicatedObjects.ToArray());
+            }
+        }
+        
+        /// <summary>
+        /// Rotates the selected objects 90 degrees around the Y axis.
+        /// </summary>
+        public void QuickRotateObjects()
+        {
+            if (controlObjects == null || controlObjects.Length == 0)
+                return;
+                
+            // Save state for history before rotation
+            if (history.historyEnabled)
+                history.SaveState(controlObjects);
+                
+            // Store original rotations for event
+            Quaternion[] startRotations = new Quaternion[controlObjects.Length];
+            Quaternion[] endRotations = new Quaternion[controlObjects.Length];
+            
+            // Store the original rotations
+            for (int i = 0; i < controlObjects.Length; i++)
+            {
+                if (controlObjects[i] != null)
+                {
+                    startRotations[i] = controlObjects[i].transform.rotation;
+                }
+            }
+            
+            // Calculate the center point of all selected objects
+            Vector3 centerPoint = Vector3.zero;
+            int validObjectCount = 0;
+            
+            foreach (var obj in controlObjects)
+            {
+                if (obj != null)
+                {
+                    centerPoint += obj.transform.position;
+                    validObjectCount++;
+                }
+            }
+            
+            if (validObjectCount > 0)
+            {
+                centerPoint /= validObjectCount;
+            }
+            
+            // Rotate each object 90 degrees around the center point
+            foreach (var obj in controlObjects)
+            {
+                if (obj != null)
+                {
+                    // Determine rotation axis and space
+                    Vector3 rotationAxis = controller.localControl ? obj.transform.up : Vector3.up;
+                    Space rotationSpace = controller.localControl ? Space.Self : Space.World;
+                    
+                    if (controlObjects.Length > 1)
+                    {
+                        // For multiple objects, rotate around the center point
+                        // This mimics how the rotation tool works in the manual rotation case
+                        if (controller.localControl)
+                        {
+                            // In local mode, rotate the object around its own up axis,
+                            // but maintain the position relative to center point
+                            Vector3 directionFromCenter = obj.transform.position - centerPoint;
+                            Quaternion rotation = Quaternion.AngleAxis(90f, Vector3.up);
+                            Vector3 newPosition = centerPoint + rotation * directionFromCenter;
+                            
+                            // Rotate the object in local space
+                            obj.transform.Rotate(Vector3.up, 90f, Space.Self);
+                            
+                            // Move to maintain the center point
+                            obj.transform.position = newPosition;
+                        }
+                        else
+                        {
+                            // In global mode, simply rotate around the center point
+                            obj.transform.RotateAround(centerPoint, Vector3.up, 90f);
+                        }
+                    }
+                    else
+                    {
+                        // For a single object, just rotate it in place
+                        obj.transform.Rotate(rotationAxis, 90f, rotationSpace);
+                    }
+                }
+            }
+            
+            // Store end rotations
+            for (int i = 0; i < controlObjects.Length; i++)
+            {
+                if (controlObjects[i] != null)
+                {
+                    endRotations[i] = controlObjects[i].transform.rotation;
+                }
+            }
+            
+            // Trigger quick rotate event
+            if (GizmoEvents.Instance != null)
+            {
+                GizmoEvents.Instance.TriggerQuickRotated(controlObjects, startRotations, endRotations);
+            }
+            
+            // Update gizmo position after rotation
+            UpdateSelectedObjects();
+        }
+        
+        /// <summary>
+        /// Groups selected objects together under a single parent.
+        /// </summary>
+        public void GroupSelectedObjects()
+        {
+            Debug.Log("GroupSelectedObjects called");
+            
+            // Check if controlObjects is null
+            if (controlObjects == null)
+            {
+                Debug.LogError("Cannot group: controlObjects is null");
+                return;
+            }
+            
+            // Check if we have enough objects to group
+            if (controlObjects.Length < 2)
+            {
+                Debug.LogError("Cannot group: need at least 2 objects, but only have " + controlObjects.Length);
+                return;
+            }
+                
+            Debug.Log("Grouping " + controlObjects.Length + " objects");
+            
+            // Log each selected object
+            for (int i = 0; i < controlObjects.Length; i++)
+            {
+                if (controlObjects[i] != null)
+                {
+                    Debug.Log("Object " + i + ": " + controlObjects[i].name);
+                    
+                    // Ensure BlockToEdit component is marked as selected to match controlObjects array
+                    BlockToEdit blockToEdit = controlObjects[i].GetComponent<BlockToEdit>();
+                    if (blockToEdit != null && !blockToEdit.selected)
+                    {
+                        Debug.Log("Forcing selection state of " + controlObjects[i].name);
+                        blockToEdit.selected = true;
+                    }
+                }
+                else
+                {
+                    Debug.LogError("Object " + i + " is null!");
+                }
+            }
+                
+            // Save state for history before grouping
+            if (history.historyEnabled)
+                history.SaveState(controlObjects);
+            
+            // Create a parent GameObject for the group
+            GameObject groupParent = new GameObject("Group");
+            groupParent.tag = controller.tagToFind;
+            
+            // Calculate center position for the group
+            Vector3 centerPos = Vector3.zero;
+            foreach (var obj in controlObjects)
+            {
+                if (obj != null)
+                    centerPos += obj.transform.position;
+            }
+            centerPos /= controlObjects.Length;
+            
+            // Set the group's position
+            groupParent.transform.position = centerPos;
+            
+            // Add a BlockToEdit component to the group
+            BlockToEdit groupBlockToEdit = groupParent.AddComponent<BlockToEdit>();
+            
+            // Keep track of original objects for event
+            GameObject[] originalObjects = controlObjects.ToArray();
+            
+            // Move all selected objects under the group parent
+            foreach (var obj in controlObjects)
+            {
+                if (obj != null)
+                {
+                    // Deselect the object as we'll select the group instead
+                    BlockToEdit blockToEdit = obj.GetComponent<BlockToEdit>();
+                    if (blockToEdit != null)
+                    {
+                        blockToEdit.selected = false;
+                        blockToEdit.DisableOutline();
+                    }
+                    
+                    // Set parent while keeping world position
+                    obj.transform.SetParent(groupParent.transform, true);
+                    Debug.Log("Parented " + obj.name + " to group");
+                }
+            }
+            
+            // Select the group
+            groupBlockToEdit.selected = true;
+            groupBlockToEdit.EnableOutline();
+            
+            // Update control objects to just the group
+            GameObject[] newSelection = new GameObject[] { groupParent };
+            controlObjects = newSelection;
+            
+            // Trigger grouping event
+            if (GizmoEvents.Instance != null)
+            {
+                GizmoEvents.Instance.TriggerObjectsGrouped(groupParent, originalObjects);
+            }
+            
+            // Update selected objects
+            UpdateSelectedObjects();
+            Debug.Log("Grouping complete - group parent: " + groupParent.name);
+        }
+        
+        /// <summary>
+        /// Ungroups the selected group, breaking it apart into individual objects.
+        /// </summary>
+        public void UngroupSelectedObjects()
+        {
+            if (controlObjects == null || controlObjects.Length == 0)
+                return;
+                
+            List<GameObject> ungroupedObjects = new List<GameObject>();
+            List<GameObject> objectsToSelect = new List<GameObject>();
+            
+            foreach (var obj in controlObjects)
+            {
+                if (obj == null) continue;
+                
+                // Save state for history before ungrouping
+                if (history.historyEnabled)
+                    history.SaveState(new GameObject[] { obj });
+                
+                // Check if this is a group (has children with BlockToEdit components)
+                BlockToEdit[] childBlocks = obj.GetComponentsInChildren<BlockToEdit>();
+                bool isGroup = childBlocks.Length > 1; // If has more than itself
+                
+                if (isGroup)
+                {
+                    // Keep track of the former group and its children
+                    GameObject formerGroup = obj;
+                    List<GameObject> childObjects = new List<GameObject>();
+                    
+                    // Get all direct children with BlockToEdit (exclude the parent itself)
+                    foreach (BlockToEdit childBlock in childBlocks)
+                    {
+                        if (childBlock.gameObject != obj)
+                        {
+                            childObjects.Add(childBlock.gameObject);
+                        }
+                    }
+                    
+                    // If no valid children were found, skip this group
+                    if (childObjects.Count == 0)
+                    {
+                        objectsToSelect.Add(obj);
+                        continue;
+                    }
+                    
+                    Debug.Log($"Ungrouping {childObjects.Count} objects from group {formerGroup.name}");
+                    
+                    // Unparent all children
+                    foreach (GameObject child in childObjects)
+                    {
+                        // Preserve world position
+                        Transform childTransform = child.transform;
+                        Vector3 worldPos = childTransform.position;
+                        Quaternion worldRot = childTransform.rotation;
+                        Vector3 worldScale = childTransform.lossyScale;
+                        
+                        // Unparent
+                        childTransform.SetParent(null);
+                        
+                        // Ensure transforms are preserved
+                        childTransform.position = worldPos;
+                        childTransform.rotation = worldRot;
+                        childTransform.localScale = worldScale;
+                        
+                        // Select the child
+                        BlockToEdit blockToEdit = child.GetComponent<BlockToEdit>();
+                        if (blockToEdit != null)
+                        {
+                            blockToEdit.selected = true;
+                            blockToEdit.EnableOutline();
+                        }
+                        
+                        objectsToSelect.Add(child);
+                        ungroupedObjects.Add(child);
+                    }
+                    
+                    // Trigger ungroup event
+                    if (GizmoEvents.Instance != null)
+                    {
+                        GizmoEvents.Instance.TriggerObjectsUngrouped(formerGroup, childObjects.ToArray());
+                    }
+                    
+                    // Destroy the group parent
+                    Destroy(formerGroup);
+                }
+                else
+                {
+                    // Not a group, keep it selected
+                    objectsToSelect.Add(obj);
+                }
+            }
+            
+            // Update selection
+            if (ungroupedObjects.Count > 0)
+            {
+                // Wait one frame to ensure Destroy has completed
+                StartCoroutine(UpdateSelectionNextFrame(objectsToSelect.ToArray()));
+            }
+            else if (objectsToSelect.Count > 0)
+            {
+                // No ungrouping happened, just update the selection
+                controlObjects = objectsToSelect.ToArray();
+                UpdateSelectedObjects();
+            }
+        }
+        
+        private System.Collections.IEnumerator UpdateSelectionNextFrame(GameObject[] objectsToSelect)
+        {
+            yield return null; // Wait one frame
+            
+            // Set control objects to the ungrouped objects
+            controlObjects = objectsToSelect;
+            
+            // Update selected objects
+            UpdateSelectedObjects();
+            
+            // Trigger selection updated event
+            if (GizmoEvents.Instance != null && controlObjects != null)
+            {
+                GizmoEvents.Instance.TriggerSelectionUpdated(controlObjects);
+            }
+        }
+
+        /// <summary>
+        /// Handles hover highlighting for objects under the cursor
+        /// </summary>
+        private void HandleHoverHighlighting()
+        {
+            // Skip in certain conditions
+            if (ShouldSkipHighlighting())
+                return;
+                
+            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+            bool hitAnyBlock = false;
+            BlockToEdit hitBlockToEdit = null;
+            
+            // Check if mouse is over a block
+            if (Physics.Raycast(ray, out RaycastHit hitInfo))
+            {
+                if (hitInfo.transform.CompareTag(controller.tagToFind))
+                {
+                    BlockToEdit blockToEdit = hitInfo.transform.GetComponent<BlockToEdit>();
+                    if (blockToEdit != null)
+                    {
+                        hitAnyBlock = true;
+                        hitBlockToEdit = blockToEdit;
+                        
+                        // Show hover outline if not already selected and not selecting with mouse button
+                        if (!blockToEdit.selected && !Input.GetMouseButton(0))
+                        {
+                            // Check if it's part of a group and apply hover outline to all objects in the group
+                            bool isGroup = blockToEdit.ApplyHoverOutlineToGroup();
+                            
+                            // If not part of a group, apply hover outline to just this object
+                            if (!isGroup)
+                            {
+                                blockToEdit.EnableHoverOutline();
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Remove hover highlighting from blocks that aren't under the cursor
+            foreach (var obj in BlockToEdit.AllObjects)
+            {
+                if (obj != null && !obj.selected && obj.hovered && obj != hitBlockToEdit)
+                {
+                    // Don't remove hover if mouse button is down (might be in the middle of selection)
+                    if (Input.GetMouseButton(0))
+                        continue;
+                        
+                    // If it's part of a group, remove hover from all objects in the group
+                    bool isGroup = obj.RemoveHoverOutlineFromGroup();
+                    
+                    // If not part of a group, just remove hover from this object
+                    if (!isGroup)
+                    {
+                        obj.DisableHoverOutline();
+                    }
+                }
+            }
+        }
+    }
+} 
