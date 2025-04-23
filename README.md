@@ -31,13 +31,3 @@ Runtime Blocks Editor to potężne narzędzie do Unity, które pozwala na tworze
 ## Dokumentacja
 
 Szczegółowa dokumentacja znajduje się w folderze `Documentation/`.
-
-## Licencja
-
-Ten asset jest chroniony prawem autorskim. Wszelkie prawa zastrzeżone.
-
-## Wsparcie
-
-W przypadku problemów lub pytań, prosimy o kontakt przez:
-- Email: [Twój email]
-- Unity Asset Store: [Link do twojego profilu] 
